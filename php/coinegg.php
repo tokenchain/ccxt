@@ -43,18 +43,18 @@ class coinegg extends Exchange {
                 ),
                 'public' => array (
                     'get' => array (
-                        'ticker/{quote}',
-                        'depth/{quote}',
-                        'orders/{quote}',
+                        'ticker/region/{quote}',
+                        'depth/region/{quote}',
+                        'orders/region/{quote}',
                     ),
                 ),
                 'private' => array (
                     'post' => array (
                         'balance',
-                        'trade_add/{quote}',
-                        'trade_cancel/{quote}',
-                        'trade_view/{quote}',
-                        'trade_list/{quote}',
+                        'trade_add/region/{quote}',
+                        'trade_cancel/region/{quote}',
+                        'trade_view/region/{quote}',
+                        'trade_list/region/{quote}',
                     ),
                 ),
             ),
@@ -142,11 +142,14 @@ class coinegg extends Exchange {
                 '404' => 'IP restriction does not request the resource',
                 '405' => 'Currency transactions are temporarily closed',
             ),
+            'options' => array (
+                'quoteIds' => array ( 'btc', 'eth', 'usc', 'usdt' ),
+            ),
         ));
     }
 
     public function fetch_markets () {
-        $quoteIds = array ( 'btc', 'usc' );
+        $quoteIds = $this->options['quoteIds'];
         $result = array ();
         for ($b = 0; $b < count ($quoteIds); $b++) {
             $quoteId = $quoteIds[$b];
@@ -207,26 +210,36 @@ class coinegg extends Exchange {
     public function parse_ticker ($ticker, $market = null) {
         $symbol = $market['symbol'];
         $timestamp = $this->milliseconds ();
-        $last = floatval ($ticker['last']);
+        $last = $this->safe_float($ticker, 'last');
+        $percentage = $this->safe_float($ticker, 'change');
+        $open = null;
+        $change = null;
+        $average = null;
+        if ($percentage !== null) {
+            $relativeChange = $percentage / 100;
+            $open = $last / $this->sum (1, $relativeChange);
+            $change = $last - $open;
+            $average = $this->sum ($last, $open) / 2;
+        }
         return array (
             'symbol' => $symbol,
             'timestamp' => $timestamp,
             'datetime' => $this->iso8601 ($timestamp),
-            'high' => floatval ($ticker['high']),
-            'low' => floatval ($ticker['low']),
-            'bid' => floatval ($ticker['buy']),
+            'high' => $this->safe_float($ticker, 'high'),
+            'low' => $this->safe_float($ticker, 'low'),
+            'bid' => $this->safe_float($ticker, 'buy'),
             'bidVolume' => null,
-            'ask' => floatval ($ticker['sell']),
+            'ask' => $this->safe_float($ticker, 'sell'),
             'askVolume' => null,
             'vwap' => null,
-            'open' => null,
+            'open' => $open,
             'close' => $last,
             'last' => $last,
             'previousClose' => null,
-            'change' => $this->safe_float($ticker, 'change'),
-            'percentage' => null,
-            'average' => null,
-            'baseVolume' => floatval ($ticker['vol']),
+            'change' => $change,
+            'percentage' => $percentage,
+            'average' => $average,
+            'baseVolume' => $this->safe_float($ticker, 'vol'),
             'quoteVolume' => $this->safe_float($ticker, 'quoteVol'),
             'info' => $ticker,
         );
@@ -235,7 +248,7 @@ class coinegg extends Exchange {
     public function fetch_ticker ($symbol, $params = array ()) {
         $this->load_markets();
         $market = $this->market ($symbol);
-        $ticker = $this->publicGetTickerQuote (array_merge (array (
+        $ticker = $this->publicGetTickerRegionQuote (array_merge (array (
             'coin' => $market['baseId'],
             'quote' => $market['quoteId'],
         ), $params));
@@ -244,7 +257,7 @@ class coinegg extends Exchange {
 
     public function fetch_tickers ($symbols = null, $params = array ()) {
         $this->load_markets();
-        $quoteIds = array ( 'btc', 'usc' );
+        $quoteIds = $this->options['quoteIds'];
         $result = array ();
         for ($b = 0; $b < count ($quoteIds); $b++) {
             $quoteId = $quoteIds[$b];
@@ -281,7 +294,7 @@ class coinegg extends Exchange {
     public function fetch_order_book ($symbol, $limit = null, $params = array ()) {
         $this->load_markets();
         $market = $this->market ($symbol);
-        $orderbook = $this->publicGetDepthQuote (array_merge (array (
+        $orderbook = $this->publicGetDepthRegionQuote (array_merge (array (
             'coin' => $market['baseId'],
             'quote' => $market['quoteId'],
         ), $params));
@@ -290,8 +303,8 @@ class coinegg extends Exchange {
 
     public function parse_trade ($trade, $market = null) {
         $timestamp = intval ($trade['date']) * 1000;
-        $price = floatval ($trade['price']);
-        $amount = floatval ($trade['amount']);
+        $price = $this->safe_float($trade, 'price');
+        $amount = $this->safe_float($trade, 'amount');
         $symbol = $market['symbol'];
         $cost = $this->cost_to_precision($symbol, $price * $amount);
         return array (
@@ -313,7 +326,7 @@ class coinegg extends Exchange {
     public function fetch_trades ($symbol, $since = null, $limit = null, $params = array ()) {
         $this->load_markets();
         $market = $this->market ($symbol);
-        $trades = $this->publicGetOrdersQuote (array_merge (array (
+        $trades = $this->publicGetOrdersRegionQuote (array_merge (array (
             'coin' => $market['baseId'],
             'quote' => $market['quoteId'],
         ), $params));
@@ -354,9 +367,9 @@ class coinegg extends Exchange {
     public function parse_order ($order, $market = null) {
         $symbol = $market['symbol'];
         $timestamp = $this->parse8601 ($order['datetime']);
-        $price = floatval ($order['price']);
-        $amount = floatval ($order['amount_original']);
-        $remaining = floatval ($order['amount_outstanding']);
+        $price = $this->safe_float($order, 'price');
+        $amount = $this->safe_float($order, 'amount_original');
+        $remaining = $this->safe_float($order, 'amount_outstanding');
         $filled = $amount - $remaining;
         $status = $this->safe_string($order, 'status');
         if ($status === 'cancelled') {
@@ -369,6 +382,7 @@ class coinegg extends Exchange {
             'id' => $this->safe_string($order, 'id'),
             'datetime' => $this->iso8601 ($timestamp),
             'timestamp' => $timestamp,
+            'lastTradeTimestamp' => null,
             'status' => $status,
             'symbol' => $symbol,
             'type' => 'limit',
@@ -387,7 +401,7 @@ class coinegg extends Exchange {
     public function create_order ($symbol, $type, $side, $amount, $price = null, $params = array ()) {
         $this->load_markets();
         $market = $this->market ($symbol);
-        $response = $this->privatePostTradeAddQuote (array_merge (array (
+        $response = $this->privatePostTradeAddRegionQuote (array_merge (array (
             'coin' => $market['baseId'],
             'quote' => $market['quoteId'],
             'type' => $side,
@@ -411,7 +425,7 @@ class coinegg extends Exchange {
     public function cancel_order ($id, $symbol = null, $params = array ()) {
         $this->load_markets();
         $market = $this->market ($symbol);
-        $response = $this->privatePostTradeCancelQuote (array_merge (array (
+        $response = $this->privatePostTradeCancelRegionQuote (array_merge (array (
             'id' => $id,
             'coin' => $market['baseId'],
             'quote' => $market['quoteId'],
@@ -422,7 +436,7 @@ class coinegg extends Exchange {
     public function fetch_order ($id, $symbol = null, $params = array ()) {
         $this->load_markets();
         $market = $this->market ($symbol);
-        $response = $this->privatePostTradeViewQuote (array_merge (array (
+        $response = $this->privatePostTradeViewRegionQuote (array_merge (array (
             'id' => $id,
             'coin' => $market['baseId'],
             'quote' => $market['quoteId'],
@@ -439,7 +453,7 @@ class coinegg extends Exchange {
         );
         if ($since !== null)
             $request['since'] = $since / 1000;
-        $orders = $this->privatePostTradeListQuote (array_merge ($request, $params));
+        $orders = $this->privatePostTradeListRegionQuote (array_merge ($request, $params));
         return $this->parse_orders($orders['data'], $market, $since, $limit);
     }
 
@@ -489,7 +503,7 @@ class coinegg extends Exchange {
 
     public function handle_errors ($code, $reason, $url, $method, $headers, $body) {
         // checks against error codes
-        if (gettype ($body) != 'string')
+        if (gettype ($body) !== 'string')
             return;
         if (strlen ($body) === 0)
             return;

@@ -112,6 +112,10 @@ let testSymbol = async (exchange, symbol) => {
         log (await exchange.fetchTickers ())
         log (await exchange.fetchGlobal  ())
 
+    } else if (exchange.id === 'coinbase') {
+
+        // do nothing for now
+
     } else {
 
         await tests['fetchOrderBook']   (exchange, symbol)
@@ -284,6 +288,7 @@ let printExchangesTable = function () {
         }
 
     })))
+
 }
 
 //-----------------------------------------------------------------------------
@@ -307,7 +312,6 @@ let tryAllProxies = async function (exchange, proxies) {
                 exchange.origin = exchange.uuid ()
 
             await testExchange (exchange)
-
             break
 
         } catch (e) {

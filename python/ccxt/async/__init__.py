@@ -4,7 +4,7 @@
 
 # -----------------------------------------------------------------------------
 
-__version__ = '1.12.141'
+__version__ = '1.14.275'
 
 # -----------------------------------------------------------------------------
 
@@ -24,6 +24,7 @@ from ccxt.base.errors import ExchangeError                      # noqa: F401
 from ccxt.base.errors import NotSupported                       # noqa: F401
 from ccxt.base.errors import AuthenticationError                # noqa: F401
 from ccxt.base.errors import PermissionDenied                   # noqa: F401
+from ccxt.base.errors import AccountSuspended                   # noqa: F401
 from ccxt.base.errors import InvalidNonce                       # noqa: F401
 from ccxt.base.errors import InsufficientFunds                  # noqa: F401
 from ccxt.base.errors import InvalidOrder                       # noqa: F401
@@ -35,12 +36,16 @@ from ccxt.base.errors import DDoSProtection                     # noqa: F401
 from ccxt.base.errors import RequestTimeout                     # noqa: F401
 from ccxt.base.errors import ExchangeNotAvailable               # noqa: F401
 from ccxt.base.errors import InvalidAddress                     # noqa: F401
+from ccxt.base.errors import AddressPending                     # noqa: F401
+from ccxt.base.errors import BadResponse                        # noqa: F401
+from ccxt.base.errors import NullResponse                       # noqa: F401
 
 from ccxt.async._1broker import _1broker                        # noqa: F401
 from ccxt.async._1btcxe import _1btcxe                          # noqa: F401
 from ccxt.async.acx import acx                                  # noqa: F401
 from ccxt.async.allcoin import allcoin                          # noqa: F401
 from ccxt.async.anxpro import anxpro                            # noqa: F401
+from ccxt.async.anybits import anybits                          # noqa: F401
 from ccxt.async.bibox import bibox                              # noqa: F401
 from ccxt.async.binance import binance                          # noqa: F401
 from ccxt.async.bit2c import bit2c                              # noqa: F401
@@ -54,6 +59,7 @@ from ccxt.async.bitkk import bitkk                              # noqa: F401
 from ccxt.async.bitlish import bitlish                          # noqa: F401
 from ccxt.async.bitmarket import bitmarket                      # noqa: F401
 from ccxt.async.bitmex import bitmex                            # noqa: F401
+from ccxt.async.bitsane import bitsane                          # noqa: F401
 from ccxt.async.bitso import bitso                              # noqa: F401
 from ccxt.async.bitstamp import bitstamp                        # noqa: F401
 from ccxt.async.bitstamp1 import bitstamp1                      # noqa: F401
@@ -76,10 +82,13 @@ from ccxt.async.cex import cex                                  # noqa: F401
 from ccxt.async.chbtc import chbtc                              # noqa: F401
 from ccxt.async.chilebit import chilebit                        # noqa: F401
 from ccxt.async.cobinhood import cobinhood                      # noqa: F401
+from ccxt.async.coinbase import coinbase                        # noqa: F401
+from ccxt.async.coinbasepro import coinbasepro                  # noqa: F401
 from ccxt.async.coincheck import coincheck                      # noqa: F401
 from ccxt.async.coinegg import coinegg                          # noqa: F401
 from ccxt.async.coinex import coinex                            # noqa: F401
 from ccxt.async.coinexchange import coinexchange                # noqa: F401
+from ccxt.async.coinfalcon import coinfalcon                    # noqa: F401
 from ccxt.async.coinfloor import coinfloor                      # noqa: F401
 from ccxt.async.coingi import coingi                            # noqa: F401
 from ccxt.async.coinmarketcap import coinmarketcap              # noqa: F401
@@ -88,7 +97,9 @@ from ccxt.async.coinnest import coinnest                        # noqa: F401
 from ccxt.async.coinone import coinone                          # noqa: F401
 from ccxt.async.coinsecure import coinsecure                    # noqa: F401
 from ccxt.async.coinspot import coinspot                        # noqa: F401
+from ccxt.async.cointiger import cointiger                      # noqa: F401
 from ccxt.async.coolcoin import coolcoin                        # noqa: F401
+from ccxt.async.crypton import crypton                          # noqa: F401
 from ccxt.async.cryptopia import cryptopia                      # noqa: F401
 from ccxt.async.dsx import dsx                                  # noqa: F401
 from ccxt.async.ethfinex import ethfinex                        # noqa: F401
@@ -138,6 +149,7 @@ from ccxt.async.quoinex import quoinex                          # noqa: F401
 from ccxt.async.southxchange import southxchange                # noqa: F401
 from ccxt.async.surbitcoin import surbitcoin                    # noqa: F401
 from ccxt.async.therock import therock                          # noqa: F401
+from ccxt.async.tidebit import tidebit                          # noqa: F401
 from ccxt.async.tidex import tidex                              # noqa: F401
 from ccxt.async.urdubit import urdubit                          # noqa: F401
 from ccxt.async.vaultoro import vaultoro                        # noqa: F401
@@ -156,6 +168,7 @@ exchanges = [
     'acx',
     'allcoin',
     'anxpro',
+    'anybits',
     'bibox',
     'binance',
     'bit2c',
@@ -169,6 +182,7 @@ exchanges = [
     'bitlish',
     'bitmarket',
     'bitmex',
+    'bitsane',
     'bitso',
     'bitstamp',
     'bitstamp1',
@@ -191,10 +205,13 @@ exchanges = [
     'chbtc',
     'chilebit',
     'cobinhood',
+    'coinbase',
+    'coinbasepro',
     'coincheck',
     'coinegg',
     'coinex',
     'coinexchange',
+    'coinfalcon',
     'coinfloor',
     'coingi',
     'coinmarketcap',
@@ -203,7 +220,9 @@ exchanges = [
     'coinone',
     'coinsecure',
     'coinspot',
+    'cointiger',
     'coolcoin',
+    'crypton',
     'cryptopia',
     'dsx',
     'ethfinex',
@@ -253,6 +272,7 @@ exchanges = [
     'southxchange',
     'surbitcoin',
     'therock',
+    'tidebit',
     'tidex',
     'urdubit',
     'vaultoro',

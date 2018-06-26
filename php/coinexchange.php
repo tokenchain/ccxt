@@ -254,7 +254,7 @@ class coinexchange extends Exchange {
                         'HC' => 0.01,
                         'HEALTHY' => 0.01,
                         'HIGH' => 0.01,
-                        'HMC' => 0.01,
+                        'HarmonyCoin' => 0.01,
                         'HNC' => 0.01,
                         'HOC' => 0.01,
                         'HODL' => 0.01,
@@ -539,15 +539,26 @@ class coinexchange extends Exchange {
                 'price' => 8,
             ),
             'commonCurrencies' => array (
+                'ACC' => 'AdCoin',
+                'ANC' => 'AnyChain',
                 'BON' => 'BonPeKaO',
+                'BONPAY' => 'BON',
+                'eNAU' => 'ENAU',
                 'ETN' => 'Ethernex',
+                'FRC' => 'FireRoosterCoin',
+                'GET' => 'GreenEnergyToken',
                 'GDC' => 'GoldenCryptoCoin',
+                'GOLD' => 'GoldenCoin',
                 'GTC' => 'GlobalTourCoin',
+                'HMC' => 'HarmonyCoin',
                 'HNC' => 'Huncoin',
+                'IBC' => 'RCoin',
                 'MARS' => 'MarsBux',
                 'MER' => 'TheMermaidCoin',
+                'PUT' => 'PutinCoin',
                 'RUB' => 'RubbleCoin',
                 'UP' => 'UpscaleToken',
+                'VULCANO' => 'VULC',
             ),
         ));
     }
@@ -562,15 +573,11 @@ class coinexchange extends Exchange {
             $id = $currency['CurrencyID'];
             $code = $this->common_currency_code($currency['TickerCode']);
             $active = $currency['WalletStatus'] === 'online';
-            $status = 'ok';
-            if (!$active)
-                $status = 'disabled';
             $result[$code] = array (
                 'id' => $id,
                 'code' => $code,
                 'name' => $currency['Name'],
                 'active' => $active,
-                'status' => $status,
                 'precision' => $precision,
                 'limits' => array (
                     'amount' => array (

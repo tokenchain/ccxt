@@ -59,6 +59,7 @@ module.exports = class southxchange extends Exchange {
             },
             'commonCurrencies': {
                 'SMT': 'SmartNode',
+                'MTC': 'Marinecoin',
             },
         });
     }
@@ -100,8 +101,10 @@ module.exports = class southxchange extends Exchange {
             let currency = this.currencies_by_id[uppercase];
             let code = currency['code'];
             let free = parseFloat (balance['Available']);
-            let used = parseFloat (balance['Unconfirmed']);
-            let total = this.sum (free, used);
+            let deposited = parseFloat (balance['Deposited']);
+            let unconfirmed = parseFloat (balance['Unconfirmed']);
+            let total = this.sum (deposited, unconfirmed);
+            let used = total - free;
             let account = {
                 'free': free,
                 'used': used,
@@ -208,7 +211,7 @@ module.exports = class southxchange extends Exchange {
         let status = 'open';
         let symbol = order['ListingCurrency'] + '/' + order['ReferenceCurrency'];
         let timestamp = undefined;
-        let price = parseFloat (order['LimitPrice']);
+        let price = this.safeFloat (order, 'LimitPrice');
         let amount = this.safeFloat (order, 'OriginalAmount');
         let remaining = this.safeFloat (order, 'Amount');
         let filled = undefined;
@@ -224,6 +227,7 @@ module.exports = class southxchange extends Exchange {
             'id': order['Code'].toString (),
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
+            'lastTradeTimestamp': undefined,
             'symbol': symbol,
             'type': 'limit',
             'side': orderType,
@@ -289,7 +293,6 @@ module.exports = class southxchange extends Exchange {
             'currency': code,
             'address': address,
             'tag': tag,
-            'status': 'ok',
             'info': response,
         };
     }

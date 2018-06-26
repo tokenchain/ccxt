@@ -59,18 +59,18 @@ class coinegg (Exchange):
                 },
                 'public': {
                     'get': [
-                        'ticker/{quote}',
-                        'depth/{quote}',
-                        'orders/{quote}',
+                        'ticker/region/{quote}',
+                        'depth/region/{quote}',
+                        'orders/region/{quote}',
                     ],
                 },
                 'private': {
                     'post': [
                         'balance',
-                        'trade_add/{quote}',
-                        'trade_cancel/{quote}',
-                        'trade_view/{quote}',
-                        'trade_list/{quote}',
+                        'trade_add/region/{quote}',
+                        'trade_cancel/region/{quote}',
+                        'trade_view/region/{quote}',
+                        'trade_list/region/{quote}',
                     ],
                 },
             },
@@ -158,10 +158,13 @@ class coinegg (Exchange):
                 '404': 'IP restriction does not request the resource',
                 '405': 'Currency transactions are temporarily closed',
             },
+            'options': {
+                'quoteIds': ['btc', 'eth', 'usc', 'usdt'],
+            },
         })
 
     def fetch_markets(self):
-        quoteIds = ['btc', 'usc']
+        quoteIds = self.options['quoteIds']
         result = []
         for b in range(0, len(quoteIds)):
             quoteId = quoteIds[b]
@@ -219,26 +222,35 @@ class coinegg (Exchange):
     def parse_ticker(self, ticker, market=None):
         symbol = market['symbol']
         timestamp = self.milliseconds()
-        last = float(ticker['last'])
+        last = self.safe_float(ticker, 'last')
+        percentage = self.safe_float(ticker, 'change')
+        open = None
+        change = None
+        average = None
+        if percentage is not None:
+            relativeChange = percentage / 100
+            open = last / self.sum(1, relativeChange)
+            change = last - open
+            average = self.sum(last, open) / 2
         return {
             'symbol': symbol,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
-            'high': float(ticker['high']),
-            'low': float(ticker['low']),
-            'bid': float(ticker['buy']),
+            'high': self.safe_float(ticker, 'high'),
+            'low': self.safe_float(ticker, 'low'),
+            'bid': self.safe_float(ticker, 'buy'),
             'bidVolume': None,
-            'ask': float(ticker['sell']),
+            'ask': self.safe_float(ticker, 'sell'),
             'askVolume': None,
             'vwap': None,
-            'open': None,
+            'open': open,
             'close': last,
             'last': last,
             'previousClose': None,
-            'change': self.safe_float(ticker, 'change'),
-            'percentage': None,
-            'average': None,
-            'baseVolume': float(ticker['vol']),
+            'change': change,
+            'percentage': percentage,
+            'average': average,
+            'baseVolume': self.safe_float(ticker, 'vol'),
             'quoteVolume': self.safe_float(ticker, 'quoteVol'),
             'info': ticker,
         }
@@ -246,7 +258,7 @@ class coinegg (Exchange):
     def fetch_ticker(self, symbol, params={}):
         self.load_markets()
         market = self.market(symbol)
-        ticker = self.publicGetTickerQuote(self.extend({
+        ticker = self.publicGetTickerRegionQuote(self.extend({
             'coin': market['baseId'],
             'quote': market['quoteId'],
         }, params))
@@ -254,7 +266,7 @@ class coinegg (Exchange):
 
     def fetch_tickers(self, symbols=None, params={}):
         self.load_markets()
-        quoteIds = ['btc', 'usc']
+        quoteIds = self.options['quoteIds']
         result = {}
         for b in range(0, len(quoteIds)):
             quoteId = quoteIds[b]
@@ -286,7 +298,7 @@ class coinegg (Exchange):
     def fetch_order_book(self, symbol, limit=None, params={}):
         self.load_markets()
         market = self.market(symbol)
-        orderbook = self.publicGetDepthQuote(self.extend({
+        orderbook = self.publicGetDepthRegionQuote(self.extend({
             'coin': market['baseId'],
             'quote': market['quoteId'],
         }, params))
@@ -294,8 +306,8 @@ class coinegg (Exchange):
 
     def parse_trade(self, trade, market=None):
         timestamp = int(trade['date']) * 1000
-        price = float(trade['price'])
-        amount = float(trade['amount'])
+        price = self.safe_float(trade, 'price')
+        amount = self.safe_float(trade, 'amount')
         symbol = market['symbol']
         cost = self.cost_to_precision(symbol, price * amount)
         return {
@@ -316,7 +328,7 @@ class coinegg (Exchange):
     def fetch_trades(self, symbol, since=None, limit=None, params={}):
         self.load_markets()
         market = self.market(symbol)
-        trades = self.publicGetOrdersQuote(self.extend({
+        trades = self.publicGetOrdersRegionQuote(self.extend({
             'coin': market['baseId'],
             'quote': market['quoteId'],
         }, params))
@@ -351,9 +363,9 @@ class coinegg (Exchange):
     def parse_order(self, order, market=None):
         symbol = market['symbol']
         timestamp = self.parse8601(order['datetime'])
-        price = float(order['price'])
-        amount = float(order['amount_original'])
-        remaining = float(order['amount_outstanding'])
+        price = self.safe_float(order, 'price')
+        amount = self.safe_float(order, 'amount_original')
+        remaining = self.safe_float(order, 'amount_outstanding')
         filled = amount - remaining
         status = self.safe_string(order, 'status')
         if status == 'cancelled':
@@ -365,6 +377,7 @@ class coinegg (Exchange):
             'id': self.safe_string(order, 'id'),
             'datetime': self.iso8601(timestamp),
             'timestamp': timestamp,
+            'lastTradeTimestamp': None,
             'status': status,
             'symbol': symbol,
             'type': 'limit',
@@ -382,7 +395,7 @@ class coinegg (Exchange):
     def create_order(self, symbol, type, side, amount, price=None, params={}):
         self.load_markets()
         market = self.market(symbol)
-        response = self.privatePostTradeAddQuote(self.extend({
+        response = self.privatePostTradeAddRegionQuote(self.extend({
             'coin': market['baseId'],
             'quote': market['quoteId'],
             'type': side,
@@ -405,7 +418,7 @@ class coinegg (Exchange):
     def cancel_order(self, id, symbol=None, params={}):
         self.load_markets()
         market = self.market(symbol)
-        response = self.privatePostTradeCancelQuote(self.extend({
+        response = self.privatePostTradeCancelRegionQuote(self.extend({
             'id': id,
             'coin': market['baseId'],
             'quote': market['quoteId'],
@@ -415,7 +428,7 @@ class coinegg (Exchange):
     def fetch_order(self, id, symbol=None, params={}):
         self.load_markets()
         market = self.market(symbol)
-        response = self.privatePostTradeViewQuote(self.extend({
+        response = self.privatePostTradeViewRegionQuote(self.extend({
             'id': id,
             'coin': market['baseId'],
             'quote': market['quoteId'],
@@ -431,7 +444,7 @@ class coinegg (Exchange):
         }
         if since is not None:
             request['since'] = since / 1000
-        orders = self.privatePostTradeListQuote(self.extend(request, params))
+        orders = self.privatePostTradeListRegionQuote(self.extend(request, params))
         return self.parse_orders(orders['data'], market, since, limit)
 
     def fetch_open_orders(self, symbol=None, since=None, limit=None, params={}):

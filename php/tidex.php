@@ -73,10 +73,6 @@ class tidex extends liqui {
             $code = strtoupper ($id);
             $code = $this->common_currency_code($code);
             $active = $currency['visible'] === true;
-            $status = 'ok';
-            if (!$active) {
-                $status = 'disabled';
-            }
             $canWithdraw = $currency['withdrawEnable'] === true;
             $canDeposit = $currency['depositEnable'] === true;
             if (!$canWithdraw || !$canDeposit) {
@@ -87,7 +83,6 @@ class tidex extends liqui {
                 'code' => $code,
                 'name' => $currency['name'],
                 'active' => $active,
-                'status' => $status,
                 'precision' => $precision,
                 'funding' => array (
                     'withdraw' => array (
@@ -129,5 +124,44 @@ class tidex extends liqui {
 
     public function get_version_string () {
         return '';
+    }
+
+    public function sign ($path, $api = 'public', $method = 'GET', $params = array (), $headers = null, $body = null) {
+        $url = $this->urls['api'][$api];
+        $query = $this->omit ($params, $this->extract_params($path));
+        if ($api === 'private') {
+            $this->check_required_credentials();
+            $nonce = $this->nonce ();
+            $body = $this->urlencode (array_merge (array (
+                'nonce' => $nonce,
+                'method' => $path,
+            ), $query));
+            $signature = $this->sign_body_with_secret($body);
+            $headers = array (
+                'Content-Type' => 'application/x-www-form-urlencoded',
+                'Key' => $this->apiKey,
+                'Sign' => $signature,
+            );
+        } else if ($api === 'public') {
+            $url .= $this->get_version_string() . '/' . $this->implode_params($path, $params);
+            if ($query) {
+                $url .= '?' . $this->urlencode ($query);
+            }
+        } else {
+            $url .= '/' . $this->implode_params($path, $params);
+            if ($method === 'GET') {
+                if ($query) {
+                    $url .= '?' . $this->urlencode ($query);
+                }
+            } else {
+                if ($query) {
+                    $body = $this->urlencode ($query);
+                    $headers = array (
+                        'Content-Type' => 'application/x-www-form-urlencoded',
+                    );
+                }
+            }
+        }
+        return array ( 'url' => $url, 'method' => $method, 'body' => $body, 'headers' => $headers );
     }
 }

@@ -60,6 +60,7 @@ class southxchange extends Exchange {
             ),
             'commonCurrencies' => array (
                 'SMT' => 'SmartNode',
+                'MTC' => 'Marinecoin',
             ),
         ));
     }
@@ -101,8 +102,10 @@ class southxchange extends Exchange {
             $currency = $this->currencies_by_id[$uppercase];
             $code = $currency['code'];
             $free = floatval ($balance['Available']);
-            $used = floatval ($balance['Unconfirmed']);
-            $total = $this->sum ($free, $used);
+            $deposited = floatval ($balance['Deposited']);
+            $unconfirmed = floatval ($balance['Unconfirmed']);
+            $total = $this->sum ($deposited, $unconfirmed);
+            $used = $total - $free;
             $account = array (
                 'free' => $free,
                 'used' => $used,
@@ -209,7 +212,7 @@ class southxchange extends Exchange {
         $status = 'open';
         $symbol = $order['ListingCurrency'] . '/' . $order['ReferenceCurrency'];
         $timestamp = null;
-        $price = floatval ($order['LimitPrice']);
+        $price = $this->safe_float($order, 'LimitPrice');
         $amount = $this->safe_float($order, 'OriginalAmount');
         $remaining = $this->safe_float($order, 'Amount');
         $filled = null;
@@ -225,6 +228,7 @@ class southxchange extends Exchange {
             'id' => (string) $order['Code'],
             'timestamp' => $timestamp,
             'datetime' => $this->iso8601 ($timestamp),
+            'lastTradeTimestamp' => null,
             'symbol' => $symbol,
             'type' => 'limit',
             'side' => $orderType,
@@ -290,7 +294,6 @@ class southxchange extends Exchange {
             'currency' => $code,
             'address' => $address,
             'tag' => $tag,
-            'status' => 'ok',
             'info' => $response,
         );
     }

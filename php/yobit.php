@@ -66,27 +66,68 @@ class yobit extends liqui {
             'commonCurrencies' => array (
                 'AIR' => 'AirCoin',
                 'ANI' => 'ANICoin',
-                'ANT' => 'AntsCoin',
+                'ANT' => 'AntsCoin',  // what is this, a coin for ants?
+                'ATMCHA' => 'ATM',
+                'ASN' => 'Ascension',
                 'AST' => 'Astral',
                 'ATM' => 'Autumncoin',
                 'BCC' => 'BCH',
                 'BCS' => 'BitcoinStake',
                 'BLN' => 'Bulleon',
+                'BOT' => 'BOTcoin',
+                'BON' => 'BONES',
+                'BPC' => 'BitcoinPremium',
                 'BTS' => 'Bitshares2',
+                'CAT' => 'BitClave',
+                'CMT' => 'CometCoin',
+                'COV' => 'Coven Coin',
+                'COVX' => 'COV',
+                'CPC' => 'Capricoin',
+                'CRC' => 'CryCash',
                 'CS' => 'CryptoSpots',
                 'DCT' => 'Discount',
                 'DGD' => 'DarkGoldCoin',
+                'DIRT' => 'DIRTY',
+                'DROP' => 'FaucetCoin',
+                'EKO' => 'EkoCoin',
+                'ENTER' => 'ENTRC',
+                'EPC' => 'ExperienceCoin',
                 'ERT' => 'Eristica Token',
+                'ESC' => 'EdwardSnowden',
+                'EUROPE' => 'EUROP',
+                'EXT' => 'LifeExtension',
+                'FUNK' => 'FUNKCoin',
+                'GCC' => 'GlobalCryptocurrency',
+                'GEN' => 'Genstake',
+                'GENE' => 'Genesiscoin',
+                'GOLD' => 'GoldMint',
+                'HTML5' => 'HTML',
+                'HYPERX' => 'HYPER',
                 'ICN' => 'iCoin',
+                'INSANE' => 'INSN',
+                'JNT' => 'JointCoin',
+                'JPC' => 'JupiterCoin',
+                'KNC' => 'KingN Coin',
+                'LBTCX' => 'LiteBitcoin',
                 'LIZI' => 'LiZi',
                 'LOC' => 'LocoCoin',
                 'LOCX' => 'LOC',
-                'LUN' => 'LunarCoin',
+                'LUNYR' => 'LUN',
+                'LUN' => 'LunarCoin',  // they just change the ticker if it is already taken
                 'MDT' => 'Midnight',
                 'NAV' => 'NavajoCoin',
+                'NBT' => 'NiceBytes',
                 'OMG' => 'OMGame',
+                'PAC' => '$PAC',
+                'PLAY' => 'PlayCoin',
+                'PIVX' => 'Darknet',
+                'PRS' => 'PRE',
+                'PUTIN' => 'PUT',
+                'STK' => 'StakeCoin',
+                'SUB' => 'Subscriptio',
                 'PAY' => 'EPAY',
                 'PLC' => 'Platin Coin',
+                'RCN' => 'RCoin',
                 'REP' => 'Republicoin',
                 'RUR' => 'RUB',
                 'XIN' => 'XINCoin',
@@ -132,7 +173,7 @@ class yobit extends liqui {
                         $account = $this->account ();
                     }
                     $account[$key] = $balances[$side][$lowercase];
-                    if ($account['total'] && $account['free'])
+                    if (($account['total'] !== null) && ($account['free'] !== null))
                         $account['used'] = $account['total'] - $account['free'];
                     $result[$currency] = $account;
                 }
@@ -150,12 +191,13 @@ class yobit extends liqui {
         return array (
             'currency' => $code,
             'address' => $address,
-            'status' => 'ok',
+            'tag' => null,
             'info' => $response['info'],
         );
     }
 
     public function fetch_deposit_address ($code, $params = array ()) {
+        $this->load_markets();
         $currency = $this->currency ($code);
         $request = array (
             'coinName' => $currency['id'],
@@ -167,16 +209,17 @@ class yobit extends liqui {
         return array (
             'currency' => $code,
             'address' => $address,
-            'status' => 'ok',
+            'tag' => null,
             'info' => $response,
         );
     }
 
-    public function withdraw ($currency, $amount, $address, $tag = null, $params = array ()) {
+    public function withdraw ($code, $amount, $address, $tag = null, $params = array ()) {
         $this->check_address($address);
         $this->load_markets();
+        $currency = $this->currency ($code);
         $response = $this->privatePostWithdrawCoinsToAddress (array_merge (array (
-            'coinName' => $currency,
+            'coinName' => $currency['id'],
             'amount' => $amount,
             'address' => $address,
         ), $params));
@@ -186,21 +229,23 @@ class yobit extends liqui {
         );
     }
 
-    public function request ($path, $api = 'public', $method = 'GET', $params = array (), $headers = null, $body = null) {
-        $response = $this->fetch2 ($path, $api, $method, $params, $headers, $body);
-        if (is_array ($response) && array_key_exists ('success', $response)) {
-            if (!$response['success']) {
-                if (mb_strpos ($response['error'], 'Insufficient funds') !== false) { // not enougTh is a typo inside Liqui's own API...
-                    throw new InsufficientFunds ($this->id . ' ' . $this->json ($response));
-                } else if ($response['error'] === 'Requests too often') {
-                    throw new DDoSProtection ($this->id . ' ' . $this->json ($response));
-                } else if (($response['error'] === 'not available') || ($response['error'] === 'external service unavailable')) {
-                    throw new DDoSProtection ($this->id . ' ' . $this->json ($response));
-                } else {
+    public function handle_errors ($code, $reason, $url, $method, $headers, $body) {
+        if ($body[0] === '{') {
+            $response = json_decode ($body, $as_associative_array = true);
+            if (is_array ($response) && array_key_exists ('success', $response)) {
+                if (!$response['success']) {
+                    if (is_array ($response) && array_key_exists ('error_log', $response)) {
+                        if (mb_strpos ($response['error_log'], 'Insufficient funds') !== false) { // not enougTh is a typo inside Liqui's own API...
+                            throw new InsufficientFunds ($this->id . ' ' . $this->json ($response));
+                        } else if ($response['error_log'] === 'Requests too often') {
+                            throw new DDoSProtection ($this->id . ' ' . $this->json ($response));
+                        } else if (($response['error_log'] === 'not available') || ($response['error_log'] === 'external service unavailable')) {
+                            throw new DDoSProtection ($this->id . ' ' . $this->json ($response));
+                        }
+                    }
                     throw new ExchangeError ($this->id . ' ' . $this->json ($response));
                 }
             }
         }
-        return $response;
     }
 }

@@ -61,6 +61,7 @@ class southxchange (Exchange):
             },
             'commonCurrencies': {
                 'SMT': 'SmartNode',
+                'MTC': 'Marinecoin',
             },
         })
 
@@ -99,8 +100,10 @@ class southxchange (Exchange):
             currency = self.currencies_by_id[uppercase]
             code = currency['code']
             free = float(balance['Available'])
-            used = float(balance['Unconfirmed'])
-            total = self.sum(free, used)
+            deposited = float(balance['Deposited'])
+            unconfirmed = float(balance['Unconfirmed'])
+            total = self.sum(deposited, unconfirmed)
+            used = total - free
             account = {
                 'free': free,
                 'used': used,
@@ -197,7 +200,7 @@ class southxchange (Exchange):
         status = 'open'
         symbol = order['ListingCurrency'] + '/' + order['ReferenceCurrency']
         timestamp = None
-        price = float(order['LimitPrice'])
+        price = self.safe_float(order, 'LimitPrice')
         amount = self.safe_float(order, 'OriginalAmount')
         remaining = self.safe_float(order, 'Amount')
         filled = None
@@ -212,6 +215,7 @@ class southxchange (Exchange):
             'id': str(order['Code']),
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
+            'lastTradeTimestamp': None,
             'symbol': symbol,
             'type': 'limit',
             'side': orderType,
@@ -273,7 +277,6 @@ class southxchange (Exchange):
             'currency': code,
             'address': address,
             'tag': tag,
-            'status': 'ok',
             'info': response,
         }
 
